@@ -1,0 +1,116 @@
+import sqlalchemy as sa 
+import pyodbc 
+from sqlalchemy import select 
+import pandas as pd 
+from  sqlalchemy import Column, Integer, String 
+
+ 
+#SQL Server 
+#Conexão sql server 
+
+engine = sa.create_engine('mssql+pyodbc://SERVIDOR/BANCO_DE_DADOS?driver=SQL+Server+Native+Client+11.0') 
+ 
+#cria contâiner que mantém juntos muitos recursos diferentes de um banco de dados que está sendo descrito. 
+metadata = sa.MetaData() 
+ 
+#Representa a tabela no banco de dados. 
+t400pess = sa.Table('NOME_DA_TABELA', metadata, autoload=True, autoload_with=engine) 
+
+#Cria select com todas as colunas 
+
+query = sa.select(t400pess)  
+
+#Executa o select no banco de dados 
+
+ResultProxy = engine.execute(query) 
+
+ 
+
+#Armazena o resultado da query 
+
+ResultSet = ResultProxy.fetchall() 
+
+
+#Imprimi o resultado da query 
+ResultSet[:] 
+
+Criação da Tabela para o Postgresql  
+
+#Busca o nome das colunas e tipos 
+
+str_sql = sa.text("SELECT COLUMN_NAME, DATA_TYPE FROM [TESTE].INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = N'NOME_DA_TABELA_NO_BANCO'") 
+results = engine.execute(str_sql).fetchall() 
+df = pd.DataFrame(results) 
+print(df) 
+ 
+
+#Trata o tipo de dados sqlServer para SqlAlchemy 
+
+print(df.replace(to_replace = "int", value = "Integer", inplace=True)) 
+print(df.replace(to_replace = "char", value = "String", inplace=True)) 
+print(df) 
+
+#Colocar nome da tabela 
+
+ def criar_tabela(): 
+    nometabela = "Nome_da_Tabela_no_banco" 
+    print("class Tabela(Base):") 
+    print("__tablename__ = '" + nometabela + "'" ) 
+    tam = len(df)
+    i = 0 
+    while i<tam: 
+        print(df[0][i] + "= Column (" + df[1][i] + ")" ) 
+        i=i+1 
+
+#Cria o script para a criação da tabela no Postgresql 
+
+criar_tabela() 
+Postgresql 
+
+#Conexão Postgresql 
+enginepg = sa.create_engine("postgresql://USUARIO:SENHA@SERVIDOR/NOME_DO_BANCO_DE_DADOS") 
+
+metadatapg = sa.MetaData() 
+
+#Copiar script do resultado do "criar_tabela", identar e escolher a primary_key 
+
+from sqlalchemy.ext.declarative import declarative_base 
+from  sqlalchemy import Column, Integer, String 
+Base = declarative_base() 
+ 
+
+class Tabela(Base): 
+    __tablename__ = 'Nome_da_Tabela_no_banco' 
+    
+    cd_cli= Column (Integer, primary_key= True) 
+    id_tp_pes= Column (String) 
+    cd_und_rsp= Column (Integer) 
+    cd_por= Column (Integer) 
+    id_sit= Column (String) 
+    cd_tp_seg= Column (Integer) 
+
+ 
+Base.metadata.create_all(enginepg) #Create the table 
+
+t400pesspg = sa.Table('NOME_DA_TABELA_NO_BANCO', metadata, autoload=True, autoload_with=enginepg) 
+
+#select 
+querypg = sa.select(t400pesspg)  
+ResultProxypg = enginepg.execute(querypg) 
+ResultSetpg = ResultProxypg.fetchall() 
+ResultSetpg[:] 
+
+#Copia os dados do SqlServer para o Postgres 
+tam = len(ResultSet) 
+i = 0 
+
+while i<tam: 
+    queryinpg = sa.insert(t400pesspg).values(cd_cli=ResultSet[i][0], id_tp_pes=ResultSet[i][1], cd_und_rsp=ResultSet[i][2],  
+                                              cd_por=ResultSet[i][3], id_sit=ResultSet[i][4], cd_tp_seg=ResultSet[i][5])      
+    resultadoinsertpg = enginepg.execute(queryinpg) 
+    i=i+1 
+
+querypg = sa.select(t400pesspg)  
+ResultProxypg = enginepg.execute(querypg) 
+ResultSetpg = ResultProxypg.fetchall() 
+ResultSetpg[:] 
